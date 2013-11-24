@@ -1,0 +1,299 @@
+<<(retarget $"In8/In8.cs")>>
+<<(nop
+
+	
+
+	(set @globals instruction-table (record))
+	(set @globals "operand-names" ^("A" "B" "C" "D" "E" "H" "L" "N"))
+
+	(defun fittab ((arg string) (arg tab-size))
+   		(if (> (strlen string) tab-size) 
+      		(substr string 0 tab-size) 
+      		(strcat string $(array (- tab-size (strlen string)) (" ")))
+   		) 
+   		"Fits text to a certain number of characters, either truncating or padding."
+	)		
+
+	(defun instruction ((arg c)(arg n)(arg name)(arg codeblock))
+		(set @globals.instruction-table (n)
+			(record 
+				("name" name)
+				(implementation "CLOCK+=(c); (codeblock)")
+			)
+		) 
+		"Record a single instruction in the relevant table."
+	)
+
+	(defun operand-name ((arg n))
+		(index @globals.operand-names n)
+		"Fetch the name of an operand from it's encoding."
+	)
+
+	(defun math-set ((arg c)(arg n)(arg name)(arg-lazy operation)) 
+		(fori f 0 2 
+			(fori s 0 8 (math-instruction c name (+ n s (* f 8)) f s operation))
+		) "Create a set of math operation instructions. These instructions combine each accumulator with every other register. The operation parameter is code that emits the instruction implementation."
+	)
+
+	(defun math-instruction ((arg c)(arg name)(arg n)(arg first-operand)(arg second-operand)(arg operation))
+		(let
+			(
+				("_1" (operand-name first-operand))
+				("_2" (if (= second-operand 0x07) "X" (operand-name second-operand)))
+			)
+			(set @globals.instruction-table (n)
+				(record
+					("name" "(name) (_1) (operand-name second-operand)")
+					(implementation "CLOCK+=(c); (if (= second-operand 0x07) "var X = (operand-name second-operand);" "") (capture (eval operation))")
+				)
+			)
+		) 
+		"Emit a single math operation instruction. _1 and _2 can be used in generator code to refer to the operands."
+	)
+
+	(defun operand-set ((arg c)(arg n)(arg name)(arg-lazy operation))
+		(fori i 0 8 (operand-instruction c name (+ n i) i operation))
+		"Create a set of instructions that accept every register. The operation parameter is code that emits the instruction implementation."
+	)
+
+	(defun operand-instruction ((arg c)(arg name)(arg n)(arg operand)(arg operation))
+		(let
+			(
+				("_1" (operand-name operand))
+			)
+			(set @globals.instruction-table (n)
+				(record
+					("name" "(name) (_1)")
+					(implementation "CLOCK+=(c); (capture (eval operation))")
+				)
+			)
+		) 
+		"Emit a single operand instruction. _1 can be used in generator code to refer to the operand."
+	)
+
+	(defun disallow ((arg name))
+		(nop)
+		"Remove an instruction from the encoding table."
+	)
+
+	(math-set    1  0b00000000 "MTA" (write "(_1) = (_2);"))
+
+	(disallow "MTA A A")
+	(instruction 4  0b00000000 "CAL" $"MEM[(ushort)(--SP)] = (byte)IP; MEM[(ushort)(--SP)] = (byte)(IP \>> 8); IP = HL;") 
+	(disallow "MTA B B")
+	(instruction 4  0b00001001 "RET" $"H = MEM[(ushort)(SP++)]; L = MEM[(ushort)(SP++)]; IP = HL;")
+
+	(math-set    1  0b00010000 "MFA" (write "(_2) = (_1);"))
+
+	(disallow "MFA A A")
+	(instruction 1  0b00010000 "SSR" $"A \>>= B;")
+	(disallow "MFA A B")
+	(instruction 1  0b00010001 "SSL" $"A <<= B;")
+	(disallow "MFA B B")
+	(instruction 1  0b00011000 "IAQ" $"IQ = HL;")
+	(disallow "MFA B B")
+	(instruction 1  0b00011001 "RFQ" $"RFQ();")
+	(disallow "MFA A N")
+	(instruction 2  0b00010111 "NOT A" $"A = (byte)~A;")
+	(disallow "MFA B N")
+	(instruction 2  0b00011111 "NOT B" $"B = (byte)~B;")
+
+	(math-set    2  0b00100000 "ADD" (write "var Y = (_1); (_1) += (_2); O = \(byte)\(\(Y + (_2)) \>> 8);"))
+	(math-set    2  0b00110000 "SUB" (write "var Y = (_1); (_1) -= (_2); O = \(byte)\(\(Y << 8) - \((_2) << 8));"))
+	(math-set    8  0b01000000 "MUL" (write "var Y = (_1); (_1) *= (_2); O = \(byte)\(\(Y * (_2)) \>> 8);"))
+	(math-set    32 0b01010000 "DIV" (write "if \((_2) == 0) DIV_ZERO\(); (_1) /= (_2); O = 0;"))
+	(math-set    32 0b01100000 "MOD" (write "if \((_2) == 0) DIV_ZERO\(); (_1) %= (_2); O = 0;"))
+	(math-set    2  0b01110000 "AND" (write "(_1) &= (_2); O = 0;"))
+
+	(disallow "AND A A")
+	(instruction 1  0b01110000 "OVE A" "A = O;")
+	(disallow "AND B B")
+	(instruction 1  0b01111001 "OVE B" "B = O;")
+
+	(math-set    2  0b10000000 "BOR" (write "(_1) |= (_2); O = 0;"))
+
+	(disallow "BOR A A")
+	(instruction 8  0b10000000 "MUS" $"var Y = B; B = (byte)((sbyte)A * (sbyte)Y); O = (byte)(((sbyte)A * (sbyte)Y) \>> 8);")
+	(disallow "BOR B B")
+	(instruction 32 0b10001001 "DIS" $"if (B == 0) DIV_ZERO\(); B = (byte)((sbyte)A / (sbyte)B); O = 0;")
+
+	(math-set    2  0b10010000 "XOR" (write "(_1) ^= (_2); O = 0;"))
+	(operand-set 4  0b10100000 "PSH" (write "MEM[\(ushort)\(--SP)] = (_1);"))
+	(operand-set 4  0b10101000 "POP" (write "(_1) = MEM[\(ushort)\(SP++)];"))
+	
+	(disallow "POP N")
+	(instruction 2  0b10101111 "RSP" $"H = (byte)(SP \>> 8); L = (byte)SP;")
+
+	(operand-set 2  0b10110000 "PEK" (write "(_1) = MEM[SP];"))
+
+	(disallow "PEK N")
+	(instruction 2  0b10110111 "SSP" $"SP = HL;")
+
+	(operand-set 8  0b10111000 "LOD" (write "(_1) = MEM[HL];"))
+	
+	(disallow "LOD N")
+	(instruction 2  0b10111111 "LLH" $"H = N; L = N;")
+
+	(operand-set 8  0b11000000 "STR" (write "MEM[HL] = (_1);"))
+	(instruction 12 0b11001000 "LDW" $"if (HL%2 == 1) ALIGN_FAULT(); A = MEM[HL]; B = MEM[HL + 1];")
+	(instruction 12 0b11001001 "SDW" $"if (HL%2 == 1) ALIGN_FAULT(); MEM[HL] = A; MEM[HL + 1] = B;")
+	(instruction 1  0b11001010 "STP" $"STOP();")
+	(instruction 2  0b11001011 "CFP" $"H = D; L = E;")
+	(instruction 2  0b11001100 "SWP" $"var T = D; D = H; H = T; T = E; E = L; L = T;")
+	(instruction 2  0b11001101 "RIP" $"H = (byte)(IP \>> 8); L = (byte)IP;")
+	(instruction 2  0b11001110 "JMP" $"IP = HL;")
+	(instruction 2  0b11001111 "JPL" $"IP = (ushort)((N << 8) + N);")
+	(instruction 8  0b11010000 "BIE" $"if (A == B) IP = HL;")
+	(instruction 8  0b11010001 "BNE" $"if (A != B) IP = HL;")
+	(instruction 8  0b11010010 "BGT" $"if (A > B) IP = HL;")
+	(instruction 8  0b11010011 "BLT" $"if (A < B) IP = HL;")
+	(instruction 8  0b11010100 "BEG" $"if (A >= B) IP = HL;")
+	(instruction 8  0b11010101 "BEL" $"if (A <= B) IP = HL;")
+	(instruction 8  0b11010110 "BSL" $"if ((sbyte)A < (sbyte)B) IP = HL;")
+	(instruction 8  0b11010111 "BSG" $"if ((sbyte)A > (sbyte)B) IP = HL;")
+	(operand-set 4  0b11011000 "CAD" (write "var T = HL; T += (_1); L = \(byte)T; H = \(byte)\(T \>> 8);"))
+	(operand-set 4  0b11100000 "CSB" (write "var T = HL; T -= (_1); L = \(byte)T; H = \(byte)\(T \>> 8);"))
+	(operand-set 4  0b11101000 "ADS" (write "SP += (_1);"))
+	(operand-set 4  0b11110000 "SBS" (write "SP -= (_1);"))
+	(instruction 2  0b11111000 "OUT" $"PORT[A] = B; if (HARDWARE[A] != null) HARDWARE[A].PortWritten(A, B);")
+	(instruction 2  0b11111001 "IIN" $"B = PORT[A];")
+	(instruction 1  0b11111010 "LLD" $"D = N; E = N;")
+	(instruction 1  0b11111011 "JIG" $"if (HL >= DE) { IP = (ushort)((N << 8) + N); } else { IP += 2; }")
+	(instruction 1  0b11111100 "NPG" "")
+	(instruction 4  0b11111101 "CLK" $"D = (byte)(CLOCK\>>24); E = (byte)(CLOCK\>>16); H = (byte)(CLOCK\>>8); L = (byte)CLOCK;")
+	(instruction 2  0b11111110 "SFJ" $"IP += N;")
+	(instruction 2  0b11111111 "SBJ" $"IP -= N;")
+
+)>>
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Assemblage
+{
+	public class IN8
+	{
+		//Setup memory and registers
+
+		public byte[] MEM = new byte[0x10000];
+		public byte A, B, C, D, E, H, L = 0;
+		public ushort IP, SP = 0;
+		public byte O = 0;
+		public uint CLOCK = 0;
+		public byte[] PORT = new byte[0x100];
+		public Hardware[] HARDWARE = new Hardware[0x100];
+		public byte[] INTERUPT_QUEUE = new byte[0x100];
+		public byte INTERUPT_HEAD = 0;
+		public byte INTERUPT_END = 0;
+		public ushort IQ = 0;
+
+		private byte N { get { CLOCK++; return MEM[(byte)(IP++)]; } }
+		private ushort HL { get { return (ushort)(((ushort)H \<< 8) + (ushort)L); }}
+		private ushort DE { get { return (ushort)(((ushort)D \<< 8) + (ushort)E); }}
+
+		public byte STATE_FLAGS = 0x80;
+
+		public void AttachHardware(Hardware h, params byte[] ports)
+		{
+			foreach (var port in ports)
+				HARDWARE[port] = h;
+		}
+
+		private void RFQ()
+		{
+			unchecked
+			{
+				STATE_FLAGS &= (byte)(~0x08);
+			}
+			O = MEM[(ushort)SP++];
+			L = MEM[(ushort)SP++];
+			H = MEM[(ushort)SP++];
+			E = MEM[(ushort)SP++];
+			D = MEM[(ushort)SP++];
+			C = MEM[(ushort)SP++];
+			B = MEM[(ushort)SP++];
+			A = MEM[(ushort)SP++];
+			IP = (ushort)(MEM[(ushort)SP++] \<< 8);
+			IP += MEM[(ushort)SP++];
+		}
+
+		public void Interrupt(byte data)
+		{
+			INTERUPT_QUEUE[INTERUPT_END] = data;
+			INTERUPT_END += 1;
+			if (INTERUPT_END == INTERUPT_HEAD)
+				STATE_FLAGS |= 0x10;
+		}
+
+		public uint Step()
+		{
+			if ((STATE_FLAGS & 0x80) == 0) return 1;
+
+			var startCLOCK = CLOCK;
+
+			if ((STATE_FLAGS & 0x08) == 0 && INTERUPT_HEAD != INTERUPT_END)
+			{
+				if (IQ != 0x0000)
+				{
+					CLOCK += 48;
+
+					MEM[(ushort)--SP] = (byte)IP;
+					MEM[(ushort)--SP] = (byte)(IP >> 8);
+					MEM[(ushort)--SP] = A;
+					MEM[(ushort)--SP] = B;
+					MEM[(ushort)--SP] = C;
+					MEM[(ushort)--SP] = D;
+					MEM[(ushort)--SP] = E;
+					MEM[(ushort)--SP] = H;
+					MEM[(ushort)--SP] = L;
+					MEM[(ushort)--SP] = O;
+
+					A = INTERUPT_QUEUE[INTERUPT_HEAD];
+					INTERUPT_HEAD += 1;
+
+					STATE_FLAGS |= 0x08;
+					IP = IQ;
+				}
+				else
+					INTERUPT_HEAD += 1;
+			}
+
+			switch (N)
+			{
+<<(fori n 0 256 
+	(write "\t\t\t\tcase (fittab "(n)" 3): \/* (fittab @globals.instruction-table.(n).name 7) */ { (@globals.instruction-table.(n).implementation) break; }\n")
+)>>
+			}
+
+			return (uint)(CLOCK - startCLOCK);
+		}
+
+		public void ALIGN_FAULT()
+		{
+			STATE_FLAGS |= 0x01;
+		}
+
+		public void STOP()
+		{
+			STATE_FLAGS |= 0x02;
+		}
+
+		public void DIV_ZERO()
+		{
+			STATE_FLAGS |= 0x04;
+		}
+
+		public static Dictionary<String, byte> GetEncodingTable()
+		{
+			var r = new Dictionary<String, byte>();
+
+<<(fori n 0 256
+	(write "\t\t\t\tr.Add\(\"(@globals.instruction-table.(n).name)\", (n));\n")
+)>>
+
+			return r;
+		}
+	}
+}

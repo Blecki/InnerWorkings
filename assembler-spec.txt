@@ -1,0 +1,34 @@
+Assembly syntax
+{
+        White space before an instruction mnemonic, after a period, and before newlines is trimmed.
+        Instructions are delimited by periods (.) or new-lines (\n, \r).
+        Comments begin with ; and extend to the end of the line.
+        Labels are : followed by a sequence of characters except periods or newlines such as ':LABEL'.
+        * Labels can contain spaces, but trailing whitespace will be trimmed.
+        * To refer to a label, all the whitespace has to match too.
+        $LABEL will be replaced with the value assigned to the label.
+        Literals are specified in the format '0X##', where '#' is a hex digit.
+
+        Instruction refering to 'N' should have the literal value encoded immediately after them.
+        * Example: PSH N. 0X02
+        * Here we have the instruction 'PSH N', followed by the literal '0X02', rather than a more difficult to parse 'PSH 0X02'.
+
+        Instructions can be condensed. 'PSH N' can be written as 'PSHN'. Each instruction has a unique condensed name.
+
+        Square brackets enclode [strings], which are encoded into the binary as data. Place a label before them to addres them.
+    }
+
+Assembling
+{
+    Pass 0
+    {
+        Read file, generating a token stream
+        Enter labels in label-table
+    }   
+
+    Pass 1
+    {
+        Iterate token stream, translating instructions to binary
+    }
+}
+

@@ -1,0 +1,9 @@
+A book that purports to teach children the inner workings of programming languages by
+	1: Designing a virtual CPU instruction set. (8-bit? 16-bit?)
+	2: Writing an interpretter for it. (All code in the book - that's not written in a language we invent - is written in C#)
+	3: Writing some simple things in machine language.
+	4: Writing an assembler (In C#)
+	5: Writing some simple things in assembly.
+	6: Write an assembler - in assembler?
+	7: Evolve the assembler into a compiler for a B-like?
+	6: Writing a compiler for some high-level language. A variant of DCPUB or possibly a variant of Basic.

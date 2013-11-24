@@ -1,0 +1,30 @@
+A virtual desktop
+	-Computer
+	-Manual
+	-Notebook
+	-ROM chips
+	-Floppy discs
+
+Going forward:
+	-Simple teletype hardware to support emission to the console immediately.
+
+
+
+Hardware items:
+
+[ ] Host Grid
+
+[ ] Debug Monitor
+[*]	ICM Display
+[ ]	ROM Loader
+[ ]	Floppy disc
+[ ]	Momentary buttons
+[*]	7-segment display
+[ ]	LED lights
+[ ]	8-unit LED strip
+[ ]	Toggle switch
+[ ]	Dials
+[ ]	Unencoded grid keyboard
+[ ]	Encoded qwerty keyboard
+
+All hardware should be designed to be easily drawn in different environments so that all can be combined into a single 3d environment.

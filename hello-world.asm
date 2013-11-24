@@ -1,0 +1,18 @@
+LLH. $STRING
+LLD. $END-STRING
+
+:TOP
+JIG. $END
+
+MTA A N. 0X04
+LOD B
+OUT
+
+CAD N. 0X01
+
+JPL. $TOP
+
+:END
+STP
+
+:STRING [Hello world!] :END-STRING

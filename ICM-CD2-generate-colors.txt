@@ -1,0 +1,25 @@
+<html><body>
+<<(let
+	(
+		(r-table ^(0x00 0x24 0x48 0x6C 0x90 0xB4 0xD8 0xFF))
+		(g-table ^(0x00 0x24 0x48 0x6C 0x90 0xB4 0xD8 0xFF))
+		(b-table ^(0x00 0x55 0xAA 0xFF))
+	)
+	(fori r 0 8
+		(fori g 0 8
+			(fori b 0 4
+				(write 
+					(format 
+						"<div class=\"swatch\" style=\"float: left; width: 32px; height: 32px; background-color: #{0:X2}{1:X2}{2:X2};\"></div>\n" 
+						(index r-table r)
+						(index g-table g)
+						(index b-table b)
+					)
+				)
+			)
+		)
+	)
+)>>
+
+
+</body></html>

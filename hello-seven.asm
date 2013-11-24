@@ -1,0 +1,31 @@
+MTA B N. 0XAA. MTA A N. 0X05. OUT
+
+
+; Set display mode Compatible
+MTA B N. 0X00. MTA A N. 0X02. OUT
+MTA B N. 0X01. MTA A N. 0X03. OUT
+
+; Clear screen
+MTA B N. 0X03. MTA A N. 0X03. OUT
+
+MTA A N. 0X00
+MFA A C
+
+:TOP
+
+;(ax(n) + c) % m = x(n+1)
+
+MTA A C. MUL A N. 0X13. ADD A N. 0X07. MOD A N. 0XF9
+MFA A C
+AND A N. 0X80
+
+MTA B N. 0X00
+LLH. $BACK-BRANCH
+BIE
+
+MTA B N. 0X5C. MTA A N. 0X02. OUT
+JPL. $TOP
+
+:BACK-BRANCH
+MTA B N. 0X2F. MTA A N. 0X02. OUT
+JPL. $TOP

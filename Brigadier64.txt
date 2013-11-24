@@ -1,0 +1,20 @@
+Brigadier 64 Spec
+
+The Brigadier 64 is a personal computing device built around an IN8 CPU.
+
+Hardware configuration
+{
+	DEVICE 						IO PORT(S)
+	Power supply 				0
+	Hardware clock 				1
+	ICM-CD2 display 			4, 5
+	D27X floppy drive 			16, 17
+	D27X floppy drive 			18, 19
+}
+
+Booting
+{
+	When the Brigadier 64 is booted, the contents of the EROM chip are loaded into RAM at address 0x0000 and executed.
+
+	EROM chips are interchangeable and can hold 256 bytes.
+}

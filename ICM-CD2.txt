@@ -1,0 +1,102 @@
+A specification of the ICM-CD2 display media
+
+Summary
+{
+	
+	The ICM-CD2 display media is a backwards-compatible display media with a modern square screen capable of reproducing 16 colors in a single image.
+	Colors can be specified by software choosing from an 8-bit color space.
+}
+
+Display Modes
+{ Display modes supported by the ICM-CD2
+	
+	02-color mode pixels per memory page: 2048
+	04-color mode pixels per memory page: 1024
+	16-color mode pixels per memory page: 512
+
+	Number 	Description 	Resolution 		Pixel bit-size 		Mapped size in pages 	Notes
+	0 		Compatible 		42*32 			7 					N/A 					This is a streaming mode.   *Default mode
+	1 		High02			128*128 		1 					8 						2-color mode 					
+	2 		Super02 		256*256 		1 					32 						2-color mode
+	3 		Mid04		 	64*64 			2 					4 						4-color mode
+	4 		High04 			128*128 		2 					16 						4-color mode
+	5 		Super04 		256*256 		2 					64 						4-color mode  *Not compatible with the IN7
+	6 		Low16 			32*32 			4 					2 						16-color mode
+	7 		Mid16 			64*64 			4					8 						16-color mode
+	8 		High16 			128*128 		4 					32 						16-color mode
+	9 		Wide 			84*32 			7 					N/A 					This is a streaming mode.
+}
+
+Streaming Modes
+{
+	
+	The ICM-CD2 supports two streaming display modes, Compatible and Wide.
+	These modes are designed to be compatible with legacy devices. These are character-display modes, and use no color data.
+	These modes require no mapped memory.
+	Every 8-bit value written to the device is displayed immediately upon the screen.
+}
+
+Palette
+{
+	
+	The ICM-CD2 has an internal palette of up to 16 colors. 
+	The display is capable of reproducing 256 distinct colors, and can display 16 of these colors at once.
+	While the palette is always 16 bytes long, in display modes of less than 16 colors, only a portion of
+		the palette is used.
+
+	Color bit format
+	[000][000][00]
+	   |   |   L Blue component
+	   |   L Green component
+	   L Red component
+	
+
+I/O Port Specification
+{
+	
+	The ICM-CD2 connects to a standard serial port. It communicates with the host device using two I/O ports which shall be called 
+		ports A and B.
+	Port B is used to send commands. Port A is used to send data.
+	Port numbers are assigned by the host device and cannot be modified.
+
+	Command Code 			Effect
+	0x01 					Change mode
+	0x02 					Map memory
+	0x03 					Refresh; Clears streaming modes.
+	0xF0-0xFF 				Set palette
+
+	Changine the display mode
+	{
+		Write the number of the mode desired to port A.
+		Then write the command code 0x01 to port B.
+	}
+
+	Mapping memory
+	{
+		Write the page to begin mapping at to port A.
+		Then write the command code 0x02 to port B.
+		The size of the mapped memory is determined by the current display mode.
+		Mapping modes are only available on supported devices, and when the display is connected to the device by an extended bus.
+		The device may not function if the memory needed extends beyond the mappable memory of the host device.
+	}
+
+	Refresh the display
+	{
+		Write the command code 0x03 to port B.
+		This will cause the display to update.
+	}
+
+	Setting the palette
+	{
+		Write the color data to set to port A.
+		Then write the command code (0xF0 + desired palette position) to port B.
+		For example, to set color 0, write 0xF0 to port B.
+		To set color 1, write 0xF1, and so on.
+	}
+
+	To display text in streaming modes
+	{
+		Write the 8-bit character code to port A.
+		The ICM-CD2 supports a 7-bit character set. The high-bit of character data sent is ignored.
+	}
+}

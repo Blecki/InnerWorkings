@@ -1,0 +1,4 @@
+The TT3 (Teletype Terminal 3) is a simple terminal device compatible with the IN8.
+
+The TT3 connects to a single IO port on the host device. All bytes written to this port are translitterated using the ASCII table and displayed. 
+
